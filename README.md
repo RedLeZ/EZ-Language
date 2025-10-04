@@ -1,85 +1,97 @@
-# EZ-Language (ez)
+# EZ-Language
 
-EZ-Language (ez) was created by RedLeZ and vexato with the aim of making the development experience easier, faster, and more enjoyable. It is designed to solve real-world pain points in multi-language projects while staying lightweight, efficient, and open to all.
-
----
-
-## Why EZ-Language Was Created
-
-EZ-Language was born from frustration. While working on multi-language projects like PlyLang, we faced major challenges, transferring data between languages, wishing libraries from one language existed in another, and dealing with inconsistent build environments. EZ was our answer: one language to bridge the gap between multiple ecosystems, while staying fast and minimal.
+EZ-Language (EZ) is designed to make programming easy, fast, and universally accessible. Whether you're a beginner or a seasoned developer, EZ empowers you to build complex projects with minimal friction, supporting reproducible environments and multi-language integration out-of-the-box.
 
 ---
 
-## Philosophy: Fast, Simple, and for Everyone
+## Philosophy
 
-EZ gets its name from its mission: make programming **easy**. Whether you're an absolute beginner or a veteran developer, EZ reduces friction so you can focus on building, not configuring.
-
-* **Simple syntax** for fast learning.
-* **Minimal setup**: just one line (`env-name;`) to initialize your project.
-* **Rapid prototyping and execution**.
-
-We believe in universal accessibility: anyone can use, learn, and build with EZ.
+- **Easy:** Simple syntax and setup for rapid development.
+- **Universal:** Multi-language support lets you mix and match code across ecosystems.
+- **Reproducible:** Nix-powered environments guarantee consistent builds and development experiences.
+- **Community-first:** Open, extensible, and driven by contributors.
 
 ---
 
 ## Core Features
 
-### Environment Declaration
+### 1. Environment Declaration & Nix Integration
 
-Use the `env-name;` statement in your `main.ez` file to declare your project type (e.g., `env-web;`, `env-game;`, `env-ai;`). This sets up the proper tooling, dependencies, and configurations for that environment.
+EZ projects start with a single declaration, such as:
+```
+doing env-web;
+doing mojo-ai;
+doing game-py;
+```
+Each environment automatically configures your dependencies and tooling using dedicated Nix expressions. This ensures every project is reproducible, isolated, and easy to share.
 
-You can also:
+- Auto-generate or import Nix files for environments.
+- Extend environments by customizing generated Nix configs.
+- Discover and use community-contributed templates.
 
-* Create and publish your own environments.
-* Use the `include` keyword to link multiple `.ez` files.
+### 2. Multi-Language Support
 
-### Multi-Language Support
+EZ lets you include and glue code from different languages in one project. Planned strategies include:
 
-EZ supports multiple programming languages under the hood. While its core is in C++, EZ allows seamless integration across ecosystems. You can use EZ to create:
+- Importing modules from Python, Mojo, C++, and more.
+- Compiling native code (C++, Mojo, Rust) to machine code/assembly and linking via a glue layer.
+- For scripting languages, leveraging compilers (e.g., Nuitka for Python) or Wasm targets for integration.
+- Automatic interface generation and unified data exchange.
 
-* Web apps
-* Minecraft mods (includes modding templates)
-* Data pipelines
-* System tools
+### 3. Easy Tooling & Editor Plugins
 
-No more switching between languages or rewriting logic. EZ does it all.
+- EZ CLI for project management, running, and building (`ez init`, `ez run`, `ez build`).
+- Editor-agnostic workflows, with dedicated plugins for VSCode and others.
+- Syntax highlighting and code intelligence for multi-language code blocks.
 
-### Custom Translator/Compiler
+### 4. Community Ecosystem
 
-EZ will ship with a built-in translator/compiler written in **C and Assembly** for maximum performance. This isn’t just another interpreted scripting tool, EZ compiles into real, optimized code.
+- Registry of environments, templates, and packages.
+- Open contributions and package sharing via Git and a dedicated website.
+- Transparent, community-driven package management.
 
-### Dependency Management (WIP)
-
-EZ handles dependencies via the environment system. We’re exploring two paths:
-
-1. **Auto-download** dependencies during compilation.
-2. **Manual installation** using a CLI (`ez install`), ideal for clean builds.
-
-Dependency security and caching will be community-reviewed and transparent.
-
-### Community-Driven Ecosystem
-
-Every EZ user is part of the team. Our open-source model means:
-
-* Anyone can contribute packages.
-* All packages are hosted and shared via Git or a dedicated website.
-* Our package manager is **the community itself**.
-
-We prioritize ethics, collaboration, and freedom.
-
-### Editor Plugins
-
-EZ is editor-agnostic. You can use:
-
-* Any text editor
-* VSCode (dedicated plugin in progress)
-* Shell + CLI for power users
-* 
 ---
 
-## Future Goals
+## Roadmap & Milestones
 
-* Release the first version of the translator.
-* Finalize dependency management strategy.
-* Grow the community through tutorials and open development.
-* Host a template repository for environments like Minecraft modding.
+**Milestone 1: Core Language and Tooling MVP**
+- EZ syntax parser and core CLI.
+- Basic environment declaration support.
+
+**Milestone 2: Nix Environment Integration**
+- Mapping declarations to Nix expressions.
+- Automated Nix file generation/import.
+
+**Milestone 3: Multi-language Foundation**
+- Code inclusion system.
+- Glue/interface layer for C++ ↔ Python/Mojo.
+
+**Milestone 4: EZ Compiler/Translator**
+- EZ-to-native compilation (C/Assembly backend).
+- Unified error and reporting system.
+
+**Milestone 5: Package & Environment Registry**
+- Community registry for environments and templates.
+- CLI integration for sharing/discovering packages.
+
+**Milestone 6: Editor Plugins and UX**
+- VSCode plugin release.
+- Enhanced documentation and onboarding.
+
+**Milestone 7: Advanced Multi-language & Community Features**
+- Support for more languages (Rust, JS, WASM, etc.).
+- Advanced glue automation and ecosystem growth.
+
+---
+
+## Get Involved
+
+- Try out the latest milestone features.
+- Contribute environments, templates, or code.
+- Join discussions and help shape the future of EZ-Language.
+
+---
+
+## License
+
+EZ-Language is open source and welcomes community contributions. See [LICENSE](LICENSE) for details.
