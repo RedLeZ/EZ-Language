@@ -1,0 +1,20 @@
+#pragma once
+#include <filesystem>
+#include <string>
+#include <vector>
+#include "diagnostics.h"
+#include "bootstrap_listener.h"
+
+struct BuildPlanEntry {
+    BootstrapListener::FriendModule module;
+    std::filesystem::path source;
+    std::filesystem::path object;
+    std::string command;
+    std::filesystem::path dylib;
+    std::string linkCommand;
+};
+
+std::vector<BuildPlanEntry> prepareBuildPlan(const std::vector<BootstrapListener::FriendModule> &modules,
+                                             const std::filesystem::path &baseDir,
+                                             std::vector<Diagnostic> &diagnostics,
+                                             const std::vector<BootstrapListener::FriendCall> &calls);

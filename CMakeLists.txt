@@ -7,7 +7,15 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(/usr/local/include/antlr4-runtime)
 link_directories(/usr/local/lib)
 
-file(GLOB GENERATED_SRC "generated/*.cpp")
+	# Explicitly list ANTLR-generated sources to avoid GLOB issues
+	set(GENERATED_SRC
+		generated/EZLanguageBaseListener.cpp
+		generated/EZLanguageLexer.cpp
+		generated/EZLanguageListener.cpp
+		generated/EZLanguageParser.cpp
+	)
 
-add_executable(ez_main src/main.cpp ${GENERATED_SRC})
+	file(GLOB SRC_FILES "src/*.cpp")
+
+	add_executable(ez_main ${SRC_FILES} ${GENERATED_SRC})
 target_link_libraries(ez_main antlr4-runtime)

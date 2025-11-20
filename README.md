@@ -50,6 +50,74 @@ EZ lets you include and glue code from different languages in one project. Plann
 - Open contributions and package sharing via Git and a dedicated website.
 - Transparent, community-driven package management.
 
+## Minimal Native MVP
+
+A tiny C++ driver (`ez_main`) is included so you can experiment with a stripped down version of EZ right now:
+
+- Exactly one environment declaration is supported: `doing native;`.
+- `friend <module> : <lang> as <alias>;` accepts `lang` equal to `c` or `cpp` and resolves `<module>` relative to the `.ez` file.
+	- If `<module>` has no extension, `.c`/`.cpp` is assumed based on `<lang>`.
+	- If `<module>` ends with `.o` or `.a`, no compile is performed; the file is linked into a `.dylib`.
+	- If `<module>` ends with `.dylib`, it is used directly.
+- `ez_main` will either print the commands (`--plan`) or execute them (`--build`) to emit artifacts under `.ezbuild/` alongside the source.
+
+### Python Friends (MVP)
+
+- You can now `friend <module>.py : python as <alias>;` and call `alias.func(a, b)` from EZ.
+- The driver generates a tiny C shim that embeds CPython, imports your module, and exports C functions matching the used calls with `int` args/return.
+- Requirements: a working Python 3 on PATH (for `python3-config`).
+
+If `python3-config` is missing or your Python is a framework build on macOS, you can set flags manually:
+
+```
+export PY_CFLAGS="-I$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("INCLUDEPY") or "")')"
+export PY_LDFLAGS="$(python3 -c 'import sysconfig; print(" ".join(filter(None,[sysconfig.get_config_var(k) or "" for k in ("LDFLAGS","LIBS","SYSLIBS","LINKFORSHARED")])))')"
+```
+
+Then re-run `--build`.
+
+Try the example:
+
+```
+./build/ez_main examples/py_demo.ez --build --run
+```
+
+This will build `.ezbuild/libpy.dylib` and print the result of `py.add(3, 5)`.
+
+### Try it out
+
+```
+cmake -S . -B build
+cmake --build build
+./build/ez_main examples/demo.ez --plan            # inspect the commands
+./build/ez_main examples/demo.ez --build           # compile native friends
+./build/ez_main examples/demo.ez --run             # interpret int declarations/expressions
+./build/ez_main examples/demo.ez --build --run     # compile friends and interpret in one go
+```
+
+The repository ships with a minimal example (`examples/demo.ez`) and a matching C friend (`examples/native_math.c`) to get started. For interpreter-only tests, try `examples/math.ez` which exercises simple `int` declarations and arithmetic. Link the resulting objects with your host application or runtime as needed.
+
+> **Limitations (for now):** no automatic code generation yet, friend module names cannot include path separators, and only native C/C++ shims are supported.
+
+### Native Codegen (C backend)
+
+You can now compile EZ (int-only subset) to C, build a native binary, and run it:
+
+```
+# Emit C to .ezbuild/<name>.c
+./build/ez_main examples/math.ez --emit-c
+
+# Build native binary at .ezbuild/<name>
+./build/ez_main examples/math.ez --build-native
+
+# Generate, build and run the native binary
+./build/ez_main examples/math.ez --run-native
+```
+
+Notes:
+- Supports `int` variables and `+ - * /` expressions; expression statements print their value.
+- Friend calls are not yet supported in codegen; use the interpreter (`--run`) for those.
+
 ---
 
 ## Roadmap & Milestones

@@ -29,9 +29,6 @@ public:
   virtual void enterFriendStatement(EZLanguageParser::FriendStatementContext *ctx) = 0;
   virtual void exitFriendStatement(EZLanguageParser::FriendStatementContext *ctx) = 0;
 
-  virtual void enterPackageDeclaration(EZLanguageParser::PackageDeclarationContext *ctx) = 0;
-  virtual void exitPackageDeclaration(EZLanguageParser::PackageDeclarationContext *ctx) = 0;
-
   virtual void enterClassDeclaration(EZLanguageParser::ClassDeclarationContext *ctx) = 0;
   virtual void exitClassDeclaration(EZLanguageParser::ClassDeclarationContext *ctx) = 0;
 
@@ -49,6 +46,9 @@ public:
 
   virtual void enterFunctionCall(EZLanguageParser::FunctionCallContext *ctx) = 0;
   virtual void exitFunctionCall(EZLanguageParser::FunctionCallContext *ctx) = 0;
+
+  virtual void enterFriendFunctionCall(EZLanguageParser::FriendFunctionCallContext *ctx) = 0;
+  virtual void exitFriendFunctionCall(EZLanguageParser::FriendFunctionCallContext *ctx) = 0;
 
   virtual void enterArgumentList(EZLanguageParser::ArgumentListContext *ctx) = 0;
   virtual void exitArgumentList(EZLanguageParser::ArgumentListContext *ctx) = 0;

@@ -31,9 +31,6 @@ public:
   virtual void enterFriendStatement(EZLanguageParser::FriendStatementContext * /*ctx*/) override { }
   virtual void exitFriendStatement(EZLanguageParser::FriendStatementContext * /*ctx*/) override { }
 
-  virtual void enterPackageDeclaration(EZLanguageParser::PackageDeclarationContext * /*ctx*/) override { }
-  virtual void exitPackageDeclaration(EZLanguageParser::PackageDeclarationContext * /*ctx*/) override { }
-
   virtual void enterClassDeclaration(EZLanguageParser::ClassDeclarationContext * /*ctx*/) override { }
   virtual void exitClassDeclaration(EZLanguageParser::ClassDeclarationContext * /*ctx*/) override { }
 
@@ -51,6 +48,9 @@ public:
 
   virtual void enterFunctionCall(EZLanguageParser::FunctionCallContext * /*ctx*/) override { }
   virtual void exitFunctionCall(EZLanguageParser::FunctionCallContext * /*ctx*/) override { }
+
+  virtual void enterFriendFunctionCall(EZLanguageParser::FriendFunctionCallContext * /*ctx*/) override { }
+  virtual void exitFriendFunctionCall(EZLanguageParser::FriendFunctionCallContext * /*ctx*/) override { }
 
   virtual void enterArgumentList(EZLanguageParser::ArgumentListContext * /*ctx*/) override { }
   virtual void exitArgumentList(EZLanguageParser::ArgumentListContext * /*ctx*/) override { }

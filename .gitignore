@@ -27,6 +27,8 @@ test/
 # Ignore Visual Studio Code settings
 .vscode/
 
+.antlr/
+
 # Ignore OS-specific files
 .DS_Store
 Thumbs.db

@@ -18,19 +18,20 @@ public:
     T__20 = 21, T__21 = 22, T__22 = 23, T__23 = 24, T__24 = 25, T__25 = 26, 
     T__26 = 27, T__27 = 28, T__28 = 29, T__29 = 30, T__30 = 31, T__31 = 32, 
     T__32 = 33, T__33 = 34, T__34 = 35, T__35 = 36, T__36 = 37, T__37 = 38, 
-    OPERATOR = 39, IDENTIFIER = 40, STRING = 41, NUMBER = 42, BOOLEAN = 43, 
-    WS = 44
+    OPERATOR = 39, BOOLEAN = 40, IDENTIFIER = 41, STRING = 42, NUMBER = 43, 
+    LINE_COMMENT = 44, BLOCK_COMMENT = 45, WS = 46
   };
 
   enum {
     RuleProgram = 0, RuleStatement = 1, RuleEnvDeclaration = 2, RuleIncludeStatement = 3, 
-    RuleFriendStatement = 4, RulePackageDeclaration = 5, RuleClassDeclaration = 6, 
-    RuleVariableDeclaration = 7, RuleFunctionDeclaration = 8, RuleParameterList = 9, 
-    RuleParameter = 10, RuleFunctionCall = 11, RuleArgumentList = 12, RuleControlFlowStatement = 13, 
-    RuleIfStatement = 14, RuleLoopStatement = 15, RuleForeachStatement = 16, 
-    RuleTryCatchStatement = 17, RuleRunStatement = 18, RuleExpressionStatement = 19, 
-    RuleExpression = 20, RulePrimaryExpression = 21, RuleLiteral = 22, RuleAccessModifier = 23, 
-    RuleType = 24, RuleBaseType = 25, RuleMapType = 26
+    RuleFriendStatement = 4, RuleClassDeclaration = 5, RuleVariableDeclaration = 6, 
+    RuleFunctionDeclaration = 7, RuleParameterList = 8, RuleParameter = 9, 
+    RuleFunctionCall = 10, RuleFriendFunctionCall = 11, RuleArgumentList = 12, 
+    RuleControlFlowStatement = 13, RuleIfStatement = 14, RuleLoopStatement = 15, 
+    RuleForeachStatement = 16, RuleTryCatchStatement = 17, RuleRunStatement = 18, 
+    RuleExpressionStatement = 19, RuleExpression = 20, RulePrimaryExpression = 21, 
+    RuleLiteral = 22, RuleAccessModifier = 23, RuleType = 24, RuleBaseType = 25, 
+    RuleMapType = 26
   };
 
   explicit EZLanguageParser(antlr4::TokenStream *input);
@@ -55,13 +56,13 @@ public:
   class EnvDeclarationContext;
   class IncludeStatementContext;
   class FriendStatementContext;
-  class PackageDeclarationContext;
   class ClassDeclarationContext;
   class VariableDeclarationContext;
   class FunctionDeclarationContext;
   class ParameterListContext;
   class ParameterContext;
   class FunctionCallContext;
+  class FriendFunctionCallContext;
   class ArgumentListContext;
   class ControlFlowStatementContext;
   class IfStatementContext;
@@ -87,8 +88,6 @@ public:
     StatementContext* statement(size_t i);
     std::vector<ClassDeclarationContext *> classDeclaration();
     ClassDeclarationContext* classDeclaration(size_t i);
-    std::vector<PackageDeclarationContext *> packageDeclaration();
-    PackageDeclarationContext* packageDeclaration(size_t i);
     std::vector<TryCatchStatementContext *> tryCatchStatement();
     TryCatchStatementContext* tryCatchStatement(size_t i);
     std::vector<RunStatementContext *> runStatement();
@@ -108,8 +107,8 @@ public:
     EnvDeclarationContext *envDeclaration();
     IncludeStatementContext *includeStatement();
     FriendStatementContext *friendStatement();
+    FriendFunctionCallContext *friendFunctionCall();
     ExpressionStatementContext *expressionStatement();
-    FunctionCallContext *functionCall();
     VariableDeclarationContext *variableDeclaration();
     ControlFlowStatementContext *controlFlowStatement();
     ForeachStatementContext *foreachStatement();
@@ -160,21 +159,6 @@ public:
   };
 
   FriendStatementContext* friendStatement();
-
-  class  PackageDeclarationContext : public antlr4::ParserRuleContext {
-  public:
-    PackageDeclarationContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *IDENTIFIER();
-    std::vector<ClassDeclarationContext *> classDeclaration();
-    ClassDeclarationContext* classDeclaration(size_t i);
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-   
-  };
-
-  PackageDeclarationContext* packageDeclaration();
 
   class  ClassDeclarationContext : public antlr4::ParserRuleContext {
   public:
@@ -270,6 +254,21 @@ public:
   };
 
   FunctionCallContext* functionCall();
+
+  class  FriendFunctionCallContext : public antlr4::ParserRuleContext {
+  public:
+    FriendFunctionCallContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<antlr4::tree::TerminalNode *> IDENTIFIER();
+    antlr4::tree::TerminalNode* IDENTIFIER(size_t i);
+    ArgumentListContext *argumentList();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+   
+  };
+
+  FriendFunctionCallContext* friendFunctionCall();
 
   class  ArgumentListContext : public antlr4::ParserRuleContext {
   public:
@@ -411,6 +410,7 @@ public:
     antlr4::tree::TerminalNode *IDENTIFIER();
     LiteralContext *literal();
     FunctionCallContext *functionCall();
+    FriendFunctionCallContext *friendFunctionCall();
     ExpressionContext *expression();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
