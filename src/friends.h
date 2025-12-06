@@ -4,6 +4,7 @@
 #include <vector>
 #include "diagnostics.h"
 #include "bootstrap_listener.h"
+#include "config.h"
 
 struct BuildPlanEntry {
     BootstrapListener::FriendModule module;
@@ -17,4 +18,5 @@ struct BuildPlanEntry {
 std::vector<BuildPlanEntry> prepareBuildPlan(const std::vector<BootstrapListener::FriendModule> &modules,
                                              const std::filesystem::path &baseDir,
                                              std::vector<Diagnostic> &diagnostics,
-                                             const std::vector<BootstrapListener::FriendCall> &calls);
+                                             const std::vector<BootstrapListener::FriendCall> &calls,
+                                             const EZConfig &config);

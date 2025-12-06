@@ -14,6 +14,7 @@
 #include "codegen_c.h"
 #include "interpreter.h"
 #include "semantic.h"
+#include "config.h"
 
 #include "../generated/EZLanguageLexer.h"
 #include "../generated/EZLanguageParser.h"
@@ -125,17 +126,22 @@ int main(int argc, const char *argv[])
     // Semantic checks (access control, invalid modifiers)
     runSemanticChecks(program, diagnostics);
 
-    std::vector<BuildPlanEntry> plan = prepareBuildPlan(listener.getFriendModules(), listener.getBaseDirectory(), diagnostics, listener.getFriendCalls());
+    // Load configuration (project .ezconfig -> ~/.ezconfig -> defaults)
+    EZConfig config = EZConfig::loadWithFallback(listener.getBaseDirectory());
+
+    std::vector<BuildPlanEntry> plan = prepareBuildPlan(listener.getFriendModules(), listener.getBaseDirectory(), diagnostics, listener.getFriendCalls(), config);
 
     if (!diagnostics.empty()) {
         printDiagnostics(diagnostics, sourcePath);
         return 1;
     }
 
-    if (verbose) {
-        std::cout << "Environment: native" << '\n';
+    // Always show plan if requested, otherwise only in verbose mode
+    const bool showPlan = !runBuild || verbose;
+    if (showPlan || verbose) {
+        if (verbose) std::cout << "Environment: native" << '\n';
         if (plan.empty()) {
-            std::cout << "No friend modules declared." << '\n';
+            if (verbose) std::cout << "No friend modules declared." << '\n';
         } else {
             std::cout << "Friend build plan:" << '\n';
             for (const auto &entry : plan) {
@@ -176,11 +182,12 @@ int main(int argc, const char *argv[])
                 std::cout << "Dynamic libraries are named lib<alias>.dylib" << '\n';
             }
         }
-    } else if (verbose) {
+    } else {
+        // --plan mode (no build): always show instruction
         if (!plan.empty()) {
             std::cout << '\n';
+            std::cout << "Run with '--build' to compile the friend modules." << '\n';
         }
-        std::cout << "Run with '--build' to compile the friend modules." << '\n';
     }
 
     // Optional: C codegen and native build/run path

@@ -13,14 +13,15 @@ namespace fs = std::filesystem;
 std::vector<BuildPlanEntry> prepareBuildPlan(const std::vector<BootstrapListener::FriendModule> &modules,
                                              const fs::path &baseDir,
                                              std::vector<Diagnostic> &diagnostics,
-                                             const std::vector<BootstrapListener::FriendCall> &calls)
+                                             const std::vector<BootstrapListener::FriendCall> &calls,
+                                             const EZConfig &config)
 {
     std::vector<BuildPlanEntry> plan;
     if (modules.empty()) {
         return plan;
     }
 
-    const fs::path outputDir = baseDir / ".ezbuild";
+    const fs::path outputDir = baseDir / config.outputDir;
     std::error_code ec;
     fs::create_directories(outputDir, ec);
     if (ec) {
@@ -111,10 +112,12 @@ std::vector<BuildPlanEntry> prepareBuildPlan(const std::vector<BootstrapListener
             compileCmd.str("");
             linkCmd << "clang -std=c11 -dynamiclib " << quote(shim) << " -o " << quote(dylib);
 
+            // Use configured Python executable (env vars override config)
             const char *pyC = std::getenv("PY_CFLAGS");
             const char *pyL = std::getenv("PY_LDFLAGS");
             const char *pyExeEnv = std::getenv("PYTHON");
-            std::string pyExe = (pyExeEnv && *pyExeEnv) ? std::string(pyExeEnv) : std::string("python3");
+            std::string pyExe = (pyExeEnv && *pyExeEnv) ? std::string(pyExeEnv) : config.pythonExecutable;
+            
             if (pyC && *pyC) {
                 linkCmd << ' ' << pyC;
             }
@@ -122,22 +125,29 @@ std::vector<BuildPlanEntry> prepareBuildPlan(const std::vector<BootstrapListener
                 linkCmd << ' ' << pyL;
             }
             if (!(pyC && *pyC) || !(pyL && *pyL)) {
-                if (!(pyExeEnv && *pyExeEnv)) {
-                    linkCmd << " $(command -v python3-config >/dev/null 2>&1 && python3-config --includes || true)";
-                    linkCmd << " $(command -v python3-config >/dev/null 2>&1 && python3-config --ldflags || true)";
-                }
+                // Try python3-config for the configured Python
+                std::string pyConfigCmd = pyExe + "-config";
+                linkCmd << " $(command -v " << pyConfigCmd << " >/dev/null 2>&1 && " << pyConfigCmd << " --includes || true)";
+                linkCmd << " $(command -v " << pyConfigCmd << " >/dev/null 2>&1 && (" << pyConfigCmd << " --ldflags --embed 2>/dev/null || " << pyConfigCmd << " --ldflags) || true)";
+                // Fallback: introspect using sysconfig
                 linkCmd << " $(" << pyExe << " -c \"import sysconfig,sys; inc=sysconfig.get_config_var('INCLUDEPY') or ''; sys.stdout.write(('-I'+inc) if inc else '')\" 2>/dev/null || true)";
                 linkCmd << " $(" << pyExe << " -c \"import sysconfig,sys; keys=('LDFLAGS','LIBS','SYSLIBS','LINKFORSHARED'); sys.stdout.write(' '.join([sysconfig.get_config_var(k) or '' for k in keys]))\" 2>/dev/null | sed -E 's/(^| )[^ ]*stack_size[^ ]*( |$)/ /g' || true)";
             }
         } else {
             const bool isC = module.language == "c";
-            const std::string compiler = isC ? "clang" : "clang++";
-            const std::string stdFlag = isC ? "-std=c11" : "-std=c++17";
+            const std::string compiler = isC ? config.cCompiler : config.cppCompiler;
+            const std::string stdFlag = isC ? ("-std=" + config.cStandard) : ("-std=" + config.cppStandard);
+            const std::string extraFlags = isC ? config.cFlags : config.cppFlags;
 
             const std::string ext = source.extension().string();
             if (ext == ".c" || ext == ".cpp" || ext == ".cc" || ext == ".cxx") {
-                compileCmd << compiler << ' ' << stdFlag << " -c " << quote(source) << " -o " << quote(object);
-                linkCmd << compiler << ' ' << stdFlag << " -dynamiclib " << quote(source) << " -o " << quote(dylib);
+                compileCmd << compiler << ' ' << stdFlag;
+                if (!extraFlags.empty()) compileCmd << ' ' << extraFlags;
+                compileCmd << " -c " << quote(source) << " -o " << quote(object);
+                
+                linkCmd << compiler << ' ' << stdFlag;
+                if (!extraFlags.empty()) linkCmd << ' ' << extraFlags;
+                linkCmd << " -dynamiclib " << quote(source) << " -o " << quote(dylib);
             } else if (ext == ".o") {
                 object = source;
                 linkCmd << compiler << ' ' << stdFlag << " -dynamiclib " << quote(object) << " -o " << quote(dylib);

@@ -19,7 +19,7 @@ dist/
 *.exe
 
 # Ignore python environment
-myenv/
+.venv/
 
 # Ignore Test files
 test/
@@ -33,3 +33,6 @@ test/
 .DS_Store
 Thumbs.db
 README.md
+
+
+extensions/

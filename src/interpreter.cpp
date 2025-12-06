@@ -230,7 +230,8 @@ std::optional<int> SimpleInterpreter::callSymbol(const std::filesystem::path &li
                                                  std::vector<Diagnostic> &diagnostics,
                                                  size_t line)
 {
-    void *handle = dlopen(libPath.c_str(), RTLD_LAZY);
+    // RTLD_NODELETE: keep library loaded (essential for Python embedding & static state)
+    void *handle = dlopen(libPath.c_str(), RTLD_LAZY | RTLD_NODELETE);
     if (!handle) {
         diagnostics.push_back({line, std::string("dlopen failed: ") + dlerror()});
         return std::nullopt;
@@ -241,7 +242,6 @@ std::optional<int> SimpleInterpreter::callSymbol(const std::filesystem::path &li
     const char *err = dlerror();
     if (err) {
         diagnostics.push_back({line, std::string("dlsym failed for '") + symbol + "': " + err});
-        dlclose(handle);
         return std::nullopt;
     }
 
@@ -274,11 +274,10 @@ std::optional<int> SimpleInterpreter::callSymbol(const std::filesystem::path &li
         }
         default:
             diagnostics.push_back({line, "only up to 4 int arguments supported"});
-            dlclose(handle);
             return std::nullopt;
     }
 
-    dlclose(handle);
+    // Library kept loaded via RTLD_NODELETE (required for Python embedding)
     return result;
 }
 

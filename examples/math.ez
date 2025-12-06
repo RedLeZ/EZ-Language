@@ -1,6 +1,5 @@
-doing native;
+ env native;
 
-friend pymath : python as py;
 friend native_math : cpp as nt;
 
 int a = 5;
@@ -8,4 +7,4 @@ int b = 7;
 int c = 3;
 
 nt.mult(a,b); // c code
-py.add(c,b); // python code
+printf("Result of mult:", nt.mult(a,b)); // should print 35
