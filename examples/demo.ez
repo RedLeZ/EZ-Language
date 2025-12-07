@@ -1,0 +1,21 @@
+env native;
+
+friend native_math: cpp as m;
+
+int x = 1 + 2 * 3;
+x + 5;
+
+m.add(x, 10);
+
+
+public class Hello() {
+    printf("Hello", mathingC(3,4), mathingCing(2,4)); // should return Hello78
+
+    private int mathingCing(int x, int y) { // private to this class 
+    return m.add(x,y+2);
+    }
+}
+
+int mathingC(int x, int y) {
+    return m.add(x,y);
+}

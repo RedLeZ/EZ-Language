@@ -1,0 +1,3 @@
+env native;
+friend native_math: cpp as m;
+int result = m.add(5, 3);

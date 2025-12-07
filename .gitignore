@@ -17,9 +17,10 @@ dist/
 *.o
 *.out
 *.exe
+*.plan
 
 # Ignore python environment
-myenv/
+.venv/
 
 # Ignore Test files
 test/
@@ -27,7 +28,15 @@ test/
 # Ignore Visual Studio Code settings
 .vscode/
 
+.antlr/
+
+.ezenv/
+
 # Ignore OS-specific files
 .DS_Store
 Thumbs.db
 README.md
+
+
+extensions/
+

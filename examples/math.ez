@@ -1,0 +1,10 @@
+ env native;
+
+friend native_math : cpp as nt;
+
+int a = 5;
+int b = 7;
+int c = 3;
+
+nt.mult(a,b); // c code
+printf("Result of mult:", nt.mult(a,b)); // should print 35

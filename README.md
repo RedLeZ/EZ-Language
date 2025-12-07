@@ -1,13 +1,135 @@
 # EZ-Language
 
-## Introduction
-EZ-Language (ez) was created by [RedLeZ](https://github.com/redlez) and [vexato](https://github.com/redlez) with the aim of making the development experience easier and more enjoyable.
+EZ-Language (EZ) is designed to make programming easy, fast, and universally accessible. Whether you're a beginner or a seasoned developer, EZ empowers you to build complex projects with minimal friction, supporting reproducible environments and multi-language integration out-of-the-box.
 
-## Features
-Like any programming language, ez has unique features that will make you, dear developer, want to use it:
+## Philosophy
 
-1. **Environment Declaration**: One of the most powerful and popular key features in ez. You can declare the type of project you want to create using the `env-name;` statement. This feature comes with predefined packages and tools to simplify development in your specified environment. Additionally, you can create your own environment and publish it to our website and env-manager. The statement is usually placed in the `main.ez` file of your project, and you can link other files using `include main.ez`.
-2. **Multi-Language Support**: EZ-Language (ez) is designed to be versatile and adaptable, supporting multiple programming languages. Although its core is primarily written in C++, ez integrates features from various languages to provide a seamless development experience. This multi-language support ensures that you can use ez in any project, regardless of the specific language requirements, without worrying about compatibility issues. Whether you are working on a web application, a system utility, or a data analysis project, ez aims to be the perfect tool that bridges the gap between different programming languages and environments.
+- **Easy:** Simple syntax and setup for rapid development.
+- **Universal:** Multi-language support lets you mix and match code across ecosystems.
+- **Reproducible:** Nix-powered environments guarantee consistent builds and development experiences.
+- **Community-first:** Open, extensible, and driven by contributors.
 
+## Status (MVP)
+Implemented now:
+- `env native;` environment declaration
+- `friend <stem>: <c|cpp|python> as <alias>;` native/Python module linking
+- Integer variables & arithmetic `+ - * /`
+- Boolean literals (`true`/`false` -> 1/0)
+- Built-in `print` / `printf`
+- Quiet vs verbose output modes (`--verbose`)
+- Semantic checks (private access, invalid modifiers)
+- C code emission (`--emit-c`, `--build-native`, `--run-native`)
 
-3. **Everyone is an Ez-team**: EZ-Language (ez) is a project created by the collective effort of the community, for the community. It is a free and open-source project that will always remain open-source. We believe in the power of collaboration and the importance of accessibility. While we welcome support and donations to help sustain and improve the project, we strictly prohibit selling the project or any of its components. Our goal is to ensure that ez remains a tool that anyone can use, contribute to, and benefit from, without any barriers.
+Not yet: function execution, returns, boolean operators, rich types.
+
+## Quickstart
+```bash
+cmake -S . -B build
+cmake --build build
+./build/ez_main examples/demo.ez --run          # quiet
+./build/ez_main examples/demo.ez --run --verbose # verbose
+```
+
+Example `examples/demo.ez`:
+```ez
+env native;
+friend native_math: cpp as m;
+int x = 1 + 2 * 3;
+print("sum:", m.add(x,2));
+```
+Build + run (compiles friend first):
+```bash
+./build/ez_main examples/demo.ez --build --run
+```
+
+Nix dev shell (optional, auto-activates when available):
+```bash
+./build/ez_main examples/demo.ez --prepare   # prefetch/build env
+./build/ez_main examples/demo.ez --run       # auto-enters nix-shell unless --no-env
+./build/ez_main examples/demo.ez --env-info  # show resolved env file/source
+```
+
+## Quiet vs Verbose
+Quiet: only user `print/printf` output.
+Verbose: environment banner, friend build plan, compile/link commands, evaluation results (`=>`), variable state.
+
+## Friend Modules
+Declare and call external native code:
+```ez
+friend native_math: cpp as m;
+print(m.add(3,2));
+```
+Use `--build` to produce `.ezenv/build/lib<alias>.dylib`.
+Python friends also supported (`python` language) via generated shim.
+
+## C Emission
+Generate C source and optional native binary from int-only subset:
+```bash
+./build/ez_main examples/math.ez --emit-c
+./build/ez_main examples/math.ez --build-native
+./build/ez_main examples/math.ez --run-native
+```
+
+## Documentation
+See `docs/` for structured guides:
+- Getting Started: `docs/getting-started/quickstart.md`
+- Concepts: environment, friend modules, visibility, types, expressions
+- Guides: embedding native code, printing & debugging
+- Reference: CLI, grammar, diagnostics, Nix environments
+- Architecture & Roadmap
+
+## Roadmap & Milestones
+
+This roadmap moves from a minimal core toward a reproducible, multi-language coordination layer with strong tooling and community ecosystem.
+
+**Milestone 1: Core Language & Tooling MVP (DONE/IN-PROGRESS)**
+- Parser, grammar, tiny interpreter (ints, expressions, print)
+- Basic environment declaration (`env native;`)
+- Friend modules (C/C++ & Python shim)
+
+**Milestone 2: Rich Environments (Nix Integration)**
+- Map environment declarations to Nix expressions
+- Auto-generation/import of Nix files for reproducible builds
+- Layered override model (base env + project customizations)
+
+**Milestone 3: Multi-language Foundation**
+- Expanded friend module types (Rust, JS/WASM, Mojo, Rust, etc..)
+- Glue/interface layer with signature introspection & basic type marshaling
+- Deterministic build graph visualization
+
+**Milestone 4: Compiler / Translator Evolution**
+- EZ → C/LLVM/WASM backends (beyond int subset)
+- Function execution, returns, boolean operators, richer types (string, array, map)
+- Unified error & reporting system (structured diagnostics, machine-readable JSON)
+
+**Milestone 5: Package & Environment Marketplace**
+- Registry for modules, environments, templates
+- CLI search, install, update, verify provenance
+- Dependency manifest + lock format
+
+**Milestone 6: IDE & UX Enhancements**
+- VS Code extension: syntax highlighting, hover docs, inline diagnostics, friend build tasks
+- Command palette actions (run, build, emit C, plan)
+- Incremental parsing & semantic lint loop
+
+**Milestone 7: Advanced Multi-language & Ecosystem Growth**
+- High-level glue automation (signature inference, type adapters)
+- WASM sandboxed execution path
+- Performance profiling & trace export
+
+**Milestone 8: Observability & Tooling Depth**
+- Unified error/reporting pipeline (colorized CLI, structured logs, JSON output flag)
+- Build metadata cache + reproducibility audit
+- Test harness integration for friend modules
+
+**Ongoing / Cross-cutting**
+- Documentation expansion & examples
+- Stability & performance passes
+- Community feedback loop shaping language additions
+
+Short-term upcoming: execute class functions & returns, boolean operators, extended type system, initial module/package manifest.
+## Contributing
+Setup steps in `docs/contributing/setup.md`. Please keep changes focused and reference related docs pages.
+
+## License
+See [LICENSE](LICENSE).

@@ -1,0 +1,6 @@
+env native;
+
+print("Booleans:", true, false);
+
+int x = 1 + true; // true coerced to 1
+print("x =", x);

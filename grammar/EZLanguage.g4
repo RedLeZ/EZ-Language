@@ -1,14 +1,26 @@
 grammar EZLanguage;
 
-program: (statement | classDeclaration | packageDeclaration | tryCatchStatement | runStatement)* EOF;
+program: (
+    statement
+    | classDeclaration
+    | tryCatchStatement
+    | runStatement
+)* EOF;
 
-statement: envDeclaration | includeStatement | friendStatement | expressionStatement | functionCall | variableDeclaration | controlFlowStatement | foreachStatement;
+statement: 
+        envDeclaration 
+        | includeStatement 
+        | friendStatement 
+        | friendFunctionCall 
+        | expressionStatement 
+        | variableDeclaration 
+        | controlFlowStatement 
+        | foreachStatement;
 
-envDeclaration: 'doing' IDENTIFIER ';';
-includeStatement: 'include' IDENTIFIER ';';
+envDeclaration: 'env' IDENTIFIER ';';
+includeStatement: 'import' IDENTIFIER ';';
 friendStatement: 'friend' IDENTIFIER ':' IDENTIFIER 'as' IDENTIFIER ';';
 
-packageDeclaration: 'package' IDENTIFIER ':' (classDeclaration)*;
 
 classDeclaration: accessModifier? 'class' IDENTIFIER '(' ')' ('extends' IDENTIFIER)? ('implements' IDENTIFIER (',' IDENTIFIER)*)? '{' (variableDeclaration | functionDeclaration)* '}';
 
@@ -18,11 +30,12 @@ functionDeclaration: accessModifier? type IDENTIFIER '(' parameterList? ')' '{' 
 parameterList: parameter (',' parameter)*;
 parameter: type IDENTIFIER;
 
-functionCall: IDENTIFIER '(' argumentList? ')' ';';
+functionCall: IDENTIFIER '(' argumentList? ')';
+friendFunctionCall: IDENTIFIER '.' IDENTIFIER '(' argumentList? ')';
 argumentList: expression (',' expression)*;
 
 controlFlowStatement: ifStatement | loopStatement;
-ifStatement: 'if' '(' expression ')' '{' statement* '}' ('elif' '(' expression ')' '{' statement* '}')* ('else' '{' statement* '}')?;
+ifStatement: 'if' '(' expression ')' '{' statement* '}' ('else if' '(' expression ')' '{' statement* '}')* ('else' '{' statement* '}')?;
 loopStatement: ('while' | 'for') '(' expression? ')' '{' statement* '}';
 foreachStatement: 'for' IDENTIFIER 'in' IDENTIFIER '{' statement* '}';
 
@@ -32,7 +45,7 @@ runStatement: 'run' IDENTIFIER ':' STRING ';';
 
 expressionStatement: expression ';';
 expression: primaryExpression (OPERATOR primaryExpression)*;
-primaryExpression: IDENTIFIER | literal | functionCall | '(' expression ')';
+primaryExpression: IDENTIFIER | literal | functionCall | friendFunctionCall | '(' expression ')';
 literal: STRING | NUMBER | BOOLEAN;
 
 accessModifier: 'public' | 'private' | 'protected';
@@ -43,8 +56,10 @@ mapType: 'map' '<' baseType ',' baseType '>';
 
 OPERATOR: '+' | '-' | '*' | '/' | '==' | '!=' | '>' | '<' | '>=' | '<=' | '&&' | '||' | '!' | '&' | '|' | '^' | '~' | '+=' | '-=' | '*=' | '/=';
 
+BOOLEAN: 'true' | 'false';
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
 STRING: '"' .*? '"';
 NUMBER: [0-9]+('.'[0-9]+)?;
-BOOLEAN: 'true' | 'false';
+LINE_COMMENT: '//' ~[\r\n]* -> skip;
+BLOCK_COMMENT: '/*' .*? '*/' -> skip;
 WS: [ \t\r\n]+ -> skip;
