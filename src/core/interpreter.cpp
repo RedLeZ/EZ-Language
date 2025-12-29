@@ -3,11 +3,35 @@
 
 using namespace std;
 
-SimpleInterpreter::SimpleInterpreter(std::ostream &stream, std::unordered_map<std::string, std::filesystem::path> friendLibs, bool verbose)
-    : output(stream), libraries(std::move(friendLibs)), verboseOutput(verbose) {}
+namespace {
+
+std::string valueToString(const Value &v) {
+    if (v.type == SimpleType::Bool) return v.intValue ? "true" : "false";
+    if (v.type == SimpleType::String) return v.stringValue;
+    return std::to_string(v.intValue);
+}
+
+} // namespace
+
+SimpleInterpreter::SimpleInterpreter(std::ostream &stream,
+                                     std::unordered_map<std::string, std::filesystem::path> friendLibs,
+                                     bool verbose,
+                                     SemanticModel model)
+    : output(stream), libraries(std::move(friendLibs)), verboseOutput(verbose), semanticModel(std::move(model))
+{
+    frames.emplace_back(); // global frame
+}
 
 bool SimpleInterpreter::execute(EZLanguageParser::ProgramContext *program, std::vector<Diagnostic> &diagnostics)
 {
+    // Collect function bodies for calls
+    for (auto *stmt : program->statement()) {
+        if (auto *fn = stmt->functionDeclaration()) {
+            const std::string name = fn->IDENTIFIER()->getText();
+            functions[name] = fn;
+        }
+    }
+
     for (auto *statement : program->statement()) {
         if (auto *varDecl = statement->variableDeclaration()) {
             handleVariableDeclaration(*varDecl, diagnostics);
@@ -23,6 +47,16 @@ bool SimpleInterpreter::execute(EZLanguageParser::ProgramContext *program, std::
             handleFriendCall(*friendCall, diagnostics);
             continue;
         }
+
+        if (statement->functionDeclaration()) {
+            // already indexed
+            continue;
+        }
+
+        if (statement->returnStatement()) {
+            diagnostics.push_back({lineOf(*statement), "return only valid inside functions"});
+            continue;
+        }
     }
 
     return diagnostics.empty();
@@ -30,19 +64,20 @@ bool SimpleInterpreter::execute(EZLanguageParser::ProgramContext *program, std::
 
 void SimpleInterpreter::printVariables() const
 {
-    if (variables.empty()) {
+    const auto &globals = frames.front();
+    if (globals.empty()) {
         output << "No variables declared." << '\n';
         return;
     }
 
     output << "Variable state:" << '\n';
-    for (const auto &entry : variables) {
-        output << "  " << entry.first << " = " << entry.second << '\n';
+    for (const auto &entry : globals) {
+        output << "  " << entry.first << " = " << valueToString(entry.second) << '\n';
     }
 }
 
-std::optional<int> SimpleInterpreter::evaluateExpression(EZLanguageParser::ExpressionContext &expression,
-                                                         std::vector<Diagnostic> &diagnostics)
+std::optional<Value> SimpleInterpreter::evaluateExpression(EZLanguageParser::ExpressionContext &expression,
+                                                           std::vector<Diagnostic> &diagnostics)
 {
     const auto &primaries = expression.primaryExpression();
     if (primaries.empty()) {
@@ -55,26 +90,79 @@ std::optional<int> SimpleInterpreter::evaluateExpression(EZLanguageParser::Expre
         return std::nullopt;
     }
 
-    const auto &operators = expression.OPERATOR();
+    std::vector<std::string> operators;
+    for (auto *child : expression.children) {
+        auto *terminal = dynamic_cast<antlr4::tree::TerminalNode *>(child);
+        if (!terminal) continue;
+        const auto type = terminal->getSymbol()->getType();
+        if (type == EZLanguageParser::OPERATOR || type == EZLanguageParser::LT || type == EZLanguageParser::GT) {
+            operators.push_back(terminal->getText());
+        }
+    }
+    if (operators.empty() && primaries.size() > 1) {
+        const std::string text = expression.getText();
+        const std::vector<std::string> candidates = {"==", "!=", ">=", "<=", "&&", "||", ">", "<", "+", "-", "*", "/"};
+        for (const auto &c : candidates) {
+            if (text.find(c) != std::string::npos) {
+                operators.push_back(c);
+                break;
+            }
+        }
+        if (operators.empty()) {
+            for (auto *opTok : expression.OPERATOR()) operators.push_back(opTok->getText());
+            if (operators.empty() && !expression.LT().empty()) operators.push_back("<");
+            if (operators.empty() && !expression.GT().empty()) operators.push_back(">");
+        }
+    }
+
     for (size_t index = 0; index < operators.size(); ++index) {
         auto rhs = evaluatePrimary(*primaries[index + 1], diagnostics);
         if (!rhs.has_value()) {
             return std::nullopt;
         }
 
-        const std::string opText = operators[index]->getText();
-        if (opText == "+") {
-            current = current.value() + rhs.value();
-        } else if (opText == "-") {
-            current = current.value() - rhs.value();
-        } else if (opText == "*") {
-            current = current.value() * rhs.value();
-        } else if (opText == "/") {
-            if (rhs.value() == 0) {
+        const std::string opText = operators[index];
+        if (opText == "+" || opText == "-" || opText == "*" || opText == "/") {
+            if (current->type != SimpleType::Int || rhs->type != SimpleType::Int) {
+                diagnostics.push_back({lineOf(expression), "arithmetic operator '" + opText + "' expects int operands"});
+                return std::nullopt;
+            }
+            if (opText == "/" && rhs->intValue == 0) {
                 diagnostics.push_back({lineOf(expression), "division by zero"});
                 return std::nullopt;
             }
-            current = current.value() / rhs.value();
+            int64_t result = 0;
+            if (opText == "+") result = current->intValue + rhs->intValue;
+            else if (opText == "-") result = current->intValue - rhs->intValue;
+            else if (opText == "*") result = current->intValue * rhs->intValue;
+            else if (opText == "/") result = current->intValue / rhs->intValue;
+            current = makeInt(result);
+        } else if (opText == "==" || opText == "!=") {
+            if (current->type != rhs->type) {
+                diagnostics.push_back({lineOf(expression), "comparison between mismatched types"});
+            }
+            bool res = (current->intValue == rhs->intValue);
+            if (opText == "!=") res = !res;
+            current = makeBool(res);
+        } else if (opText == ">" || opText == "<" || opText == ">=" || opText == "<=") {
+            if (current->type != SimpleType::Int || rhs->type != SimpleType::Int) {
+                diagnostics.push_back({lineOf(expression), "relational operator '" + opText + "' expects int operands"});
+                return std::nullopt;
+            }
+            bool res = false;
+            if (opText == ">") res = current->intValue > rhs->intValue;
+            else if (opText == "<") res = current->intValue < rhs->intValue;
+            else if (opText == ">=") res = current->intValue >= rhs->intValue;
+            else if (opText == "<=") res = current->intValue <= rhs->intValue;
+            current = makeBool(res);
+        } else if (opText == "&&" || opText == "||") {
+            if (current->type != SimpleType::Bool || rhs->type != SimpleType::Bool) {
+                diagnostics.push_back({lineOf(expression), "logical operator '" + opText + "' expects boolean operands"});
+                return std::nullopt;
+            }
+            bool res = (opText == "&&") ? (current->intValue && rhs->intValue)
+                                         : (current->intValue || rhs->intValue);
+            current = makeBool(res);
         } else {
             diagnostics.push_back({lineOf(expression), "operator '" + opText + "' not supported in interpreter"});
             return std::nullopt;
@@ -84,17 +172,17 @@ std::optional<int> SimpleInterpreter::evaluateExpression(EZLanguageParser::Expre
     return current;
 }
 
-std::optional<int> SimpleInterpreter::evaluatePrimary(EZLanguageParser::PrimaryExpressionContext &primary,
-                                                      std::vector<Diagnostic> &diagnostics)
+std::optional<Value> SimpleInterpreter::evaluatePrimary(EZLanguageParser::PrimaryExpressionContext &primary,
+                                                        std::vector<Diagnostic> &diagnostics)
 {
     if (auto *identifier = primary.IDENTIFIER()) {
         const std::string name = identifier->getText();
-        auto iterator = variables.find(name);
-        if (iterator == variables.end()) {
-            diagnostics.push_back({lineOf(primary), "unknown identifier '" + name + "'"});
-            return std::nullopt;
+        for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
+            auto found = it->find(name);
+            if (found != it->end()) return found->second;
         }
-        return iterator->second;
+        diagnostics.push_back({lineOf(primary), "unknown identifier '" + name + "'"});
+        return std::nullopt;
     }
 
     if (auto *literal = primary.literal()) {
@@ -104,65 +192,68 @@ std::optional<int> SimpleInterpreter::evaluatePrimary(EZLanguageParser::PrimaryE
                 diagnostics.push_back({lineOf(primary), "floating point literals not supported yet"});
                 return std::nullopt;
             }
-            return std::stoi(text);
+            return makeInt(std::stoll(text));
         }
         if (auto *booleanTok = literal->BOOLEAN()) {
             const std::string val = booleanTok->getText();
-            return val == "true" ? 1 : 0; // represent booleans as 1/0
+            return makeBool(val == "true");
         }
-        diagnostics.push_back({lineOf(primary), "only numeric and boolean literals are supported"});
+        if (auto *stringTok = literal->STRING()) {
+            std::string text = stringTok->getText();
+            // Remove surrounding quotes
+            if (text.size() >= 2 && text.front() == '"' && text.back() == '"') {
+                text = text.substr(1, text.size() - 2);
+            }
+            Value v;
+            v.type = SimpleType::String;
+            v.stringValue = text;
+            return v;
+        }
+        diagnostics.push_back({lineOf(primary), "only numeric, boolean, and string literals are supported"});
         return std::nullopt;
     }
 
     if (auto *call = primary.functionCall()) {
-        // Built-in print/printf support
         const std::string fname = call->IDENTIFIER()->getText();
+        // Built-in print/printf support
         if (fname == "print" || fname == "printf") {
             std::vector<std::string> rendered;
             if (auto *args = call->argumentList()) {
                 for (auto *expr : args->expression()) {
-                    // If single primary is a STRING literal, emit it raw (strip quotes)
-                    auto prims = expr->primaryExpression();
-                    if (prims.size() == 1) {
-                        if (auto *lit = prims[0]->literal()) {
-                            if (auto *strTok = lit->STRING()) {
-                                std::string text = strTok->getText();
-                                if (text.size() >= 2 && text.front() == '"' && text.back() == '"') {
-                                    text = text.substr(1, text.size() - 2);
-                                }
-                                rendered.push_back(text);
-                                continue;
-                            } else if (lit->BOOLEAN()) {
-                                rendered.push_back(lit->BOOLEAN()->getText());
-                                continue;
-                            } else if (lit->NUMBER()) {
-                                rendered.push_back(lit->NUMBER()->getText());
-                                continue;
-                            }
-                        }
-                    }
-                    // Fallback: evaluate as int expression
                     auto value = evaluateExpression(*expr, diagnostics);
                     if (!value.has_value()) {
                         rendered.push_back("<error>");
                     } else {
-                        rendered.push_back(std::to_string(value.value()));
+                        rendered.push_back(valueToString(value.value()));
                     }
                 }
             }
-            // Join with space for simple printing
             std::string joined;
             for (size_t i = 0; i < rendered.size(); ++i) {
                 if (i) joined += ' ';
                 joined += rendered[i];
             }
             output << joined << '\n';
-            // Return 0 as dummy value
-            return 0;
+            return makeInt(0);
         }
 
-        diagnostics.push_back({lineOf(primary), "function calls are not supported in interpreter (only print/printf)"});
-        return std::nullopt;
+        // User-defined function call
+        auto fnIt = functions.find(fname);
+        if (fnIt == functions.end()) {
+            diagnostics.push_back({lineOf(primary), "unknown function '" + fname + "'"});
+            return std::nullopt;
+        }
+
+        std::vector<Value> args;
+        if (auto *argList = call->argumentList()) {
+            for (auto *expr : argList->expression()) {
+                auto v = evaluateExpression(*expr, diagnostics);
+                if (!v.has_value()) return std::nullopt;
+                args.push_back(*v);
+            }
+        }
+
+        return executeFunction(fname, *fnIt->second, args, diagnostics);
     }
 
     if (auto *friendCall = primary.friendFunctionCall()) {
@@ -180,12 +271,16 @@ std::optional<int> SimpleInterpreter::evaluatePrimary(EZLanguageParser::PrimaryE
             for (auto *expr : argsList->expression()) {
                 auto value = evaluateExpression(*expr, diagnostics);
                 if (!value.has_value()) return std::nullopt;
-                args.push_back(value.value());
+                if (value->type != SimpleType::Int) {
+                    diagnostics.push_back({lineOf(*expr), "friend calls currently only support int arguments"});
+                    return std::nullopt;
+                }
+                args.push_back(static_cast<int>(value->intValue));
             }
         }
 
         auto result = callSymbol(it->second, symbol, args, diagnostics, lineOf(primary));
-        if (result.has_value()) return result;
+        if (result.has_value()) return makeInt(result.value());
         return std::nullopt;
     }
 
@@ -214,7 +309,11 @@ void SimpleInterpreter::handleFriendCall(EZLanguageParser::FriendFunctionCallCon
         for (auto *expr : argsList->expression()) {
             auto value = evaluateExpression(*expr, diagnostics);
             if (!value.has_value()) return;
-            args.push_back(value.value());
+            if (value->type != SimpleType::Int) {
+                diagnostics.push_back({lineOf(*expr), "friend calls currently only support int arguments"});
+                return;
+            }
+            args.push_back(static_cast<int>(value->intValue));
         }
     }
 
@@ -291,27 +390,35 @@ void SimpleInterpreter::handleVariableDeclaration(EZLanguageParser::VariableDecl
     }
 
     const std::string typeName = typeContext->getText();
-    if (typeName != "int") {
-        diagnostics.push_back({lineOf(context), "only 'int' variables are supported in interpreter"});
+    SimpleType declType = SimpleType::Unknown;
+    if (typeName == "int") declType = SimpleType::Int;
+    else if (typeName == "boolean") declType = SimpleType::Bool;
+    else {
+        diagnostics.push_back({lineOf(context), "only 'int' and 'boolean' variables are supported in interpreter"});
         return;
     }
 
     const std::string variableName = context.IDENTIFIER()->getText();
-    if (variables.count(variableName) != 0) {
+    auto &currentFrame = frames.back();
+    if (currentFrame.count(variableName) != 0) {
         diagnostics.push_back({lineOf(context), "variable '" + variableName + "' already declared"});
         return;
     }
 
-    int value = 0;
+    Value value = (declType == SimpleType::Bool) ? makeBool(false) : makeInt(0);
     if (auto *expression = context.expression()) {
         auto evaluated = evaluateExpression(*expression, diagnostics);
         if (!evaluated.has_value()) {
             return;
         }
-        value = evaluated.value();
+        if (evaluated->type != declType) {
+            diagnostics.push_back({lineOf(context), "cannot assign expression of type '" + toString(evaluated->type) + "' to variable of type '" + typeName + "'"});
+            return;
+        }
+        value = *evaluated;
     }
 
-    variables.emplace(variableName, value);
+    currentFrame.emplace(variableName, value);
 }
 
 void SimpleInterpreter::handleExpressionStatement(EZLanguageParser::ExpressionStatementContext &context,
@@ -328,7 +435,87 @@ void SimpleInterpreter::handleExpressionStatement(EZLanguageParser::ExpressionSt
         return;
     }
 
-    if (verboseOutput) output << "=> " << result.value() << '\n';
+    if (verboseOutput) output << "=> " << valueToString(result.value()) << '\n';
+}
+
+std::optional<Value> SimpleInterpreter::executeFunction(const std::string &name,
+                                                        EZLanguageParser::FunctionDeclarationContext &ctx,
+                                                        const std::vector<Value> &args,
+                                                        std::vector<Diagnostic> &diagnostics)
+{
+    auto sigIt = semanticModel.functions.find(name);
+    if (sigIt == semanticModel.functions.end()) {
+        diagnostics.push_back({lineOf(ctx), "no signature information for function '" + name + "'"});
+        return std::nullopt;
+    }
+    const FunctionInfo &sig = sigIt->second;
+
+    if (args.size() != sig.params.size()) {
+        diagnostics.push_back({lineOf(ctx), "function '" + name + "' expects " + to_string(sig.params.size()) + " argument(s)"});
+        return std::nullopt;
+    }
+
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (sig.params[i].type != SimpleType::Unknown && args[i].type != sig.params[i].type) {
+            diagnostics.push_back({lineOf(ctx), "argument " + to_string(i+1) + " type mismatch: expected '" + toString(sig.params[i].type) + "' got '" + toString(args[i].type) + "'"});
+            return std::nullopt;
+        }
+    }
+
+    frames.emplace_back();
+    auto &frame = frames.back();
+    for (size_t i = 0; i < args.size(); ++i) {
+        frame.emplace(sig.params[i].name, args[i]);
+    }
+
+    std::optional<Value> returnValue;
+
+    for (auto *stmt : ctx.statement()) {
+        if (auto *vd = stmt->variableDeclaration()) {
+            handleVariableDeclaration(*vd, diagnostics);
+            if (!diagnostics.empty()) break;
+            continue;
+        }
+
+        if (auto *exprStmt = stmt->expressionStatement()) {
+            handleExpressionStatement(*exprStmt, diagnostics);
+            if (!diagnostics.empty()) break;
+            continue;
+        }
+
+        if (auto *friendCall = stmt->friendFunctionCall()) {
+            handleFriendCall(*friendCall, diagnostics);
+            if (!diagnostics.empty()) break;
+            continue;
+        }
+
+        if (auto *ret = stmt->returnStatement()) {
+            if (ret->expression()) {
+                returnValue = evaluateExpression(*ret->expression(), diagnostics);
+            } else {
+                returnValue = makeVoid();
+            }
+            break;
+        }
+    }
+
+    frames.pop_back();
+
+    if (sig.returnType == SimpleType::Void) {
+        return makeVoid();
+    }
+
+    if (!returnValue.has_value()) {
+        diagnostics.push_back({lineOf(ctx), "function '" + name + "' did not return a value"});
+        return std::nullopt;
+    }
+
+    if (returnValue->type != sig.returnType) {
+        diagnostics.push_back({lineOf(ctx), "function '" + name + "' returned '" + toString(returnValue->type) + "' but expected '" + toString(sig.returnType) + "'"});
+        return std::nullopt;
+    }
+
+    return returnValue;
 }
 
 size_t SimpleInterpreter::lineOf(const antlr4::ParserRuleContext &context)

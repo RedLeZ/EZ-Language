@@ -44,6 +44,9 @@ public:
   virtual void enterParameter(EZLanguageParser::ParameterContext *ctx) = 0;
   virtual void exitParameter(EZLanguageParser::ParameterContext *ctx) = 0;
 
+  virtual void enterReturnStatement(EZLanguageParser::ReturnStatementContext *ctx) = 0;
+  virtual void exitReturnStatement(EZLanguageParser::ReturnStatementContext *ctx) = 0;
+
   virtual void enterFunctionCall(EZLanguageParser::FunctionCallContext *ctx) = 0;
   virtual void exitFunctionCall(EZLanguageParser::FunctionCallContext *ctx) = 0;
 

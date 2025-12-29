@@ -274,8 +274,8 @@ int main(int argc, const char *argv[])
         }
     }
 
-    // Semantic checks (access control, invalid modifiers)
-    runSemanticChecks(program, diagnostics);
+    // Semantic checks (types, access control, returns)
+    SemanticModel semanticModel = runSemanticChecks(program, diagnostics);
 
     if (resolvedEnv && resolvedEnv->envSource == "builtin") {
         std::vector<std::string> conflicts;
@@ -408,7 +408,7 @@ int main(int argc, const char *argv[])
 
         std::vector<Diagnostic> cgDiags;
         CCodeGenerator codegen;
-        const std::string cSrc = codegen.generate(program, cgDiags);
+        const std::string cSrc = codegen.generate(program, semanticModel, cgDiags);
         if (!cgDiags.empty()) {
             printDiagnostics(cgDiags, sourcePath);
             return 1;
@@ -455,7 +455,7 @@ int main(int argc, const char *argv[])
         libMap.emplace(e.module.alias, e.dylib);
     }
 
-    SimpleInterpreter interpreter(std::cout, std::move(libMap), verbose);
+    SimpleInterpreter interpreter(std::cout, std::move(libMap), verbose, semanticModel);
     if (!interpreter.execute(program, diagnostics)) {
         printDiagnostics(diagnostics, sourcePath);
         return 1;

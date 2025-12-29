@@ -46,6 +46,9 @@ public:
   virtual void enterParameter(EZLanguageParser::ParameterContext * /*ctx*/) override { }
   virtual void exitParameter(EZLanguageParser::ParameterContext * /*ctx*/) override { }
 
+  virtual void enterReturnStatement(EZLanguageParser::ReturnStatementContext * /*ctx*/) override { }
+  virtual void exitReturnStatement(EZLanguageParser::ReturnStatementContext * /*ctx*/) override { }
+
   virtual void enterFunctionCall(EZLanguageParser::FunctionCallContext * /*ctx*/) override { }
   virtual void exitFunctionCall(EZLanguageParser::FunctionCallContext * /*ctx*/) override { }
 

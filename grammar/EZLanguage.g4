@@ -8,14 +8,16 @@ program: (
 )* EOF;
 
 statement: 
-        envDeclaration 
-        | includeStatement 
-        | friendStatement 
-        | friendFunctionCall 
-        | expressionStatement 
-        | variableDeclaration 
-        | controlFlowStatement 
-        | foreachStatement;
+    envDeclaration 
+    | includeStatement 
+    | friendStatement 
+    | friendFunctionCall 
+    | expressionStatement 
+    | variableDeclaration 
+    | controlFlowStatement 
+    | foreachStatement
+    | functionDeclaration
+    | returnStatement;
 
 envDeclaration: 'env' IDENTIFIER ';';
 includeStatement: 'import' IDENTIFIER ';';
@@ -29,6 +31,8 @@ variableDeclaration: accessModifier? type IDENTIFIER ('=' expression)? ';';
 functionDeclaration: accessModifier? type IDENTIFIER '(' parameterList? ')' '{' (statement)* '}';
 parameterList: parameter (',' parameter)*;
 parameter: type IDENTIFIER;
+
+returnStatement: 'return' expression? ';';
 
 functionCall: IDENTIFIER '(' argumentList? ')';
 friendFunctionCall: IDENTIFIER '.' IDENTIFIER '(' argumentList? ')';
@@ -44,7 +48,7 @@ tryCatchStatement: 'try' '{' statement* '}' ('catch' '(' IDENTIFIER ')' '{' stat
 runStatement: 'run' IDENTIFIER ':' STRING ';';
 
 expressionStatement: expression ';';
-expression: primaryExpression (OPERATOR primaryExpression)*;
+expression: primaryExpression (op=(OPERATOR | LT | GT) primaryExpression)*;
 primaryExpression: IDENTIFIER | literal | functionCall | friendFunctionCall | '(' expression ')';
 literal: STRING | NUMBER | BOOLEAN;
 
@@ -52,9 +56,13 @@ accessModifier: 'public' | 'private' | 'protected';
 
 type: baseType ('[]')?;
 baseType: 'int' | 'float' | 'boolean' | 'string' | 'void' | mapType;
-mapType: 'map' '<' baseType ',' baseType '>';
+mapType: 'map' LT baseType COMMA baseType GT;
 
-OPERATOR: '+' | '-' | '*' | '/' | '==' | '!=' | '>' | '<' | '>=' | '<=' | '&&' | '||' | '!' | '&' | '|' | '^' | '~' | '+=' | '-=' | '*=' | '/=';
+OPERATOR: '+' | '-' | '*' | '/' | '==' | '!=' | '>=' | '<=' | '&&' | '||' | '!' | '&' | '|' | '^' | '~' | '+=' | '-=' | '*=' | '/=';
+
+LT: '<';
+GT: '>';
+COMMA: ',';
 
 BOOLEAN: 'true' | 'false';
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]*;
